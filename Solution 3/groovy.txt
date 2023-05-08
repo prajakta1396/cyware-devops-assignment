@@ -1,0 +1,33 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_COMPOSE_VERSION = '1.29.2'
+        DOCKER_HOST = "ssh://${EC2_USERNAME}@${EC2_IP_ADDRESS}"
+        DOCKER_CERT_PATH = '/root/.docker/'
+        DOCKER_TLS_VERIFY = '1'
+    }
+
+    stages {
+        stage('Install Docker Compose') {
+            steps {
+                sh "ssh ${DOCKER_HOST} sudo curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose"
+                sh "ssh ${DOCKER_HOST} sudo chmod +x /usr/local/bin/docker-compose"
+                sh "ssh ${DOCKER_HOST} sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose"
+                sh "ssh ${DOCKER_HOST} docker-compose version"
+            }
+        }
+
+        stage('Run Docker Compose') {
+            steps {
+                sh "ssh ${DOCKER_HOST} 'cd /path/to/docker-compose && docker-compose up -d'"
+            }
+        }
+    }
+
+    post {
+        always {
+            sh "ssh ${DOCKER_HOST} 'cd /path/to/docker-compose && docker-compose down'"
+        }
+    }
+}
